@@ -3,6 +3,7 @@
 #include <vector>
 #include <cmath>
 
+//compile with g++ decimal_to_binary.cpp
 int main (int argc, char* argv[] ){
 
    int input=(argc>1) ? atoi(argv[1]) : std::pow(2,3);
