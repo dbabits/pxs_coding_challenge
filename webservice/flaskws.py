@@ -15,9 +15,12 @@ b'0394a2ede332c9a13eb82e9b24631604c31df978b4e2f0fbd2c549944f9d79a5'
 
 '''
 from flask import Flask
+import hashlib
 app = Flask(__name__)
  
 @app.route('/', methods=["GET"])
 def index():
-    return "Hello World"
+    hash=hashlib.sha256(b'foo')
+    hex=hash.hexdigest()
+    return "Hello World. sha256(foo)="+hex
 app.run(debug=True)
