@@ -25,10 +25,10 @@ summ=sys.argv[2]
 print filename, " ",summ
 with open(filename, 'r') as f:
   for line in f:
-    desc,price=line.split(',')
-    complement=summ-price
-    print desc,"|",price,"|", complement
-    complements = [summ -x for x in range(10)]
+    desc,price=line.strip().split(',')
+    complement=int(summ)-int(price)
+    print ("%s|%s|%s" %(desc,price, complement))
+    #complements = [summ -x for x in range(10)]
 
 exit (0)
 for line in sys.stdin:

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import logging
 import argparse
+import sys
 
 def name(g):
     return g[0]
@@ -8,20 +9,27 @@ def price (g):
     return g[1]
 
 gifts=( 
-         ("bar",125,125)
-        ,("moo",125,125)
-        ,("foo",250,250)
-        ,("candy bar", 500,500)
-        ,("paperback book", 700,700)
-        ,("detergent",1000,1000)
-        ,("headphones",1400,1400)
-        ,("earmuffs",2000,2000)
-        ,("bluetooth stereo",6000,6000)
+         ("bar",125)
+        ,("moo",125)
+        ,("foo",250)
+        ,("candy bar", 500)
+        ,("paperback book", 700)
+        ,("detergent",1000)
+        ,("headphones",1400)
+        ,("earmuffs",2000)
+        ,("bluetooth stereo",6000)
     )
 
 '''
 for each item, iterate over all other items, starting from the next (e.g.: do not iterate both a,b and b,a - only one combo. Data assumed to be sorted
 '''
+def find_pair2(i,item,total):
+    print i," ",item," ",total
+
+def find_pair3(i,item,item2,price,price2):
+    print i," ",item," ",item2," ",price," ",price2
+
+
 def find_pair(total):
 
     best_diff=None
@@ -62,11 +70,36 @@ def find_pair(total):
         print "find_pair(",total,")-Best combination=",gifts[item1],",", gifts[item2], "sum=",gifts[item1][1]+gifts[item2][1]," best_diff=",best_diff," nItems=",len(gifts)," Iterations=",iters
         return [gifts[item1],gifts[item2]]
 
+def iterate_list(total):
+    #for i in range (0,len(gifts)):
+    for i, item in enumerate(gifts):
+        find_pair2(i,item,total)
+
+def iterate_file():
+    filename = args.filename
+    total = args.total
+    print filename, " ", total
+
+    with open(filename, 'r') as f:
+        for line in f:
+            item, price = line.strip().split(',')
+            #complement = int(summ) - int(price)
+            #print("%s|%s|%s" % (item, price, complement))
+            try:
+                while True:
+                    nextline=f.next()
+                    item2, price2 = nextline.strip().split(',')
+                    find_pair3(i, item,item2, price,price2)
+            except(StopIteration):
+                logging.error("StopIteration")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-v", "--verbose", help="make it verbose",action="store_true")
+parser.add_argument("-f", "--filename", help="filename to parse",action="store_true")
+parser.add_argument("-t", "--total", help="card balance",action="store_true")
 
 args = parser.parse_args()
+
 loglevel=logging.INFO
 if args.verbose:
     loglevel=logging.DEBUG
@@ -74,11 +107,17 @@ if args.verbose:
 #logging.basicConfig(format='%(levelname)s:%(message)s',level=loglevel)
 logging.basicConfig(format='%(message)s',level=loglevel)
 
-assert(find_pair (400)  ==[('bar', 125, 125) , ('foo', 250, 250)])
-assert(find_pair (2500) ==[("candy bar", 500,500),("earmuffs",2000,2000)])
-assert(find_pair (2300) ==[('foo', 250, 250) , ('earmuffs', 2000, 2000)])
-assert(find_pair (10000)==[("earmuffs",2000,2000),("bluetooth stereo",6000,6000)])
-assert(find_pair (1100) ==[("foo",250,250),("paperback book", 700,700)])
+iterate_file()
+exit(0)
+
+iterate_list(400)
+exit(0)
+
+assert(find_pair (400)  ==[('bar', 125),      ('foo', 250)])
+assert(find_pair (2500) ==[("candy bar", 500),("earmuffs",2000)])
+assert(find_pair (2300) ==[('foo', 250),      ('earmuffs', 2000)])
+assert(find_pair (10000)==[("earmuffs",2000), ("bluetooth stereo",6000)])
+assert(find_pair (1100) ==[("foo",250),       ("paperback book", 700)])
 assert(find_pair (125)  ==[])
 print "All tests passed, exiting"
 exit(0)
