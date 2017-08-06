@@ -90,11 +90,11 @@ find_pair( 125 )-Best combination Not possible  nItems= 9  Iterations= 0
 '''
 
 result = 1;
-result = result and fibonacci(0) == 0;
-result = result and fibonacci(1) == 1;
-result = result and fibonacci(2) == 1;
-result = result and fibonacci(10) == 55;
-result = result and fibonacci(40) == 102334155;
+result = result and find_pair(0) == 0;
+result = result and find_pair(1) == 1;
+result = result and find_pair(2) == 1;
+result = result and find_pair(10) == 55;
+result = result and find_pair(40) == 102334155;
 
 if result:
  print("All tests pass\n")
