@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from flask import Flask, request, abort, make_response,jsonify
-
 import hashlib
 
 app = Flask(__name__)
@@ -11,6 +10,7 @@ messages = {}
 @app.route('/', methods=["GET"])
 def index():
     return '''
+    <pre>
     Installation on Ubuntu:
          sudo apt install python-pip
          dima@LAPTOP-MA6OEPO9:~/development/pxs_coding_challenge/webservice$ pip install flask
@@ -18,7 +18,7 @@ def index():
          dima@LAPTOP-MA6OEPO9:~/development/pxs_coding_challenge/webservice$ ./flaskws.py
 
     Usage:     
-        show help:   
+        show this message:   
             curl -Li {url_root}
         show endpoints:   
             curl -Li {url_root}show_endpoints/
@@ -28,8 +28,10 @@ def index():
             curl -Li {url_root}messages/2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae
         list all messages saved:
             curl -Li {url_root}messages/
+        
         host={host}
         url_root={url_root}
+        
     '''.format(host=request.host,url_root=request.url_root)
 
 @app.route('/show_endpoints/', methods=["GET"])
@@ -72,5 +74,6 @@ def msg_to_digest():
 
     messages[digest] = msg
     return jsonify({"digest":digest,"count(messages)":len(messages),"info":info})
+
 
 app.run(debug=True)
