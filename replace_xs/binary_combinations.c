@@ -30,9 +30,13 @@ int main(int argc, char* argv[]) {
    char* s = (argc>1) ? argv[1] : d;
    int n = strlen(s);
    printf("%s\n\n",s);
-   print(s,n); 
+   print(s,n); //print all 0s in place of Xs first
    
-
+   while (increment(s,n)) {
+      print(s,n);
+   }
+   
+   printf("\n\nDEBUG:orig string=%s;strlen(string)=%d,nXs=%d, total_iterations=%d\n\n",s,n,count_chars(s,'X'),total_iterations);
 }
 /*
 
