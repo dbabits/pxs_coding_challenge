@@ -2,6 +2,12 @@
 #include <string.h>
 
 int total_iterations=0;
+int count_chars(const char* s, char c) {
+    int i=0;
+    for (i=0; s[i]!='\0'; s[i]==c ? i++ : *(s++));
+    return i;
+}
+
 void print(const char* s, int n) {
    static int counter=0;
    printf("%d: ",++counter);
