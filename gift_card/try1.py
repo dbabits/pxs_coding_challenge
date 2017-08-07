@@ -20,18 +20,9 @@ gifts=(
         ,("bluetooth stereo",6000)
     )
 
-'''
-for each item, iterate over all other items, starting from the next (e.g.: do not iterate both a,b and b,a - only one combo. Data assumed to be sorted
-'''
-def find_pair2(i,item,total):
-    print i," ",item," ",total
-
-def find_pair3(i,item,item2,price,price2):
-    print i," ",item," ",item2," ",price," ",price2
-
 ''' 
     for each item, iterate over all other items, sum up 2 prices, and find the smallest diff from total.
-    Possible optimization: since the list (or file) is sorted by price, we can do binary search for the second item, by price 
+    TODO: since the list (or file) is sorted by price, we can do binary search for the second item, by price 
 '''
 def find_pair(total):
 
@@ -73,38 +64,6 @@ def find_pair(total):
         print "find_pair(",total,")-Best combination=",gifts[item1],",", gifts[item2], "sum=",gifts[item1][1]+gifts[item2][1]," best_diff=",best_diff," nItems=",len(gifts)," Iterations=",iters
         return [gifts[item1],gifts[item2]]
 
-def iterate_list(total):
-    #for i in range (0,len(gifts)):
-    for i, item in enumerate(gifts):
-        find_pair2(i,item,total)
-
-def iterate_file():
-    filename = args.filename
-    total = args.total
-    print filename, " ", total
-
-    #with open(filename, 'r') as f:
-    #https://sqlite.org/csv.html
-    #sqlite> .load /home/dima/development/sqlite/sqlite-amalgamation-3200000/csv
-	#sqlite> CREATE VIRTUAL TABLE temp.t1 USING csv(filename='prices.txt');
-	#sqlite> select * from t1;
-	#sqlite> select c0,c1 from t1 where c1+500<1500;
-
-    for line in filename:
-            item, price = line.strip().split(',')
-            complement = int(total) - int(price)
-            #search the same file for the price <= complement
-            print("%s|%s|%s" % (item, price, complement))
-            try:
-                while True:
-                    nextline=filename.next()
-                    item2, price2 = nextline.strip().split(',')
-                    complement = int(total) - int(price2)
-                    print("%s|%s|%s" % (item2, price2, complement))
-                    #find_pair3(i, item,item2, price,price2)
-            except(StopIteration):
-                logging.error("StopIteration")
-                pass
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-v", "--verbose", help="make it verbose",action="store_true")
@@ -119,11 +78,6 @@ if args.verbose:
 #logging.basicConfig(format='%(levelname)s:%(message)s',level=loglevel)
 logging.basicConfig(format='%(message)s',level=loglevel)
 
-iterate_file()
-exit(0)
-
-iterate_list(400)
-exit(0)
 
 assert(find_pair (400)  ==[('bar', 125),      ('foo', 250)])
 assert(find_pair (2500) ==[("candy bar", 500),("earmuffs",2000)])
@@ -135,22 +89,7 @@ print "All tests passed, exiting"
 exit(0)
 
 '''
-cat <<EOF | /home/dima/development/sqlite/sqlite-amalgamation-3200000/sqlite3 -header -column
-.load /home/dima/development/sqlite/sqlite-amalgamation-3200000/csv
-CREATE VIRTUAL TABLE temp.t USING csv(filename='/home/dima/development/pxs_coding_challenge/gift_card/prices.txt');
-SELECT t1.rowid,t2.rowid, t1.c0 || " + " || t2.c0 as combination, t1.c1 as first_price, t2.c1 as second_price, t1.c1+t2.c1 as summ 
-FROM t t1, t t2 
-WHERE t1.rowid < t2.rowid
-   and summ<=10000 
-ORDER BY summ DESC
-LIMIT 1;
-EOF
-
-rowid       rowid       combination                 first_price  second_price  summ
-----------  ----------  --------------------------  -----------  ------------  ----------
-1           2           Candy Bar + Paperback Book   500          700          1200
-1           3           Candy Bar + Detergent        500          1000         1500
-
+		
 1) Original:
 dima@LAPTOP-MA6OEPO9:~/development/paxos_coding_challenge/gift_card$ ./try1.py|grep "Best combination"
 find_pair( 400 )-Best combination= ('bar', 125, 125) , ('foo', 250, 250) sum= 375  best_diff= 25  nItems= 9  Iterations= 36
