@@ -1,0 +1,13 @@
+#gcc -DSQLITE_THREADSAFE=0 shell.c sqlite3.c -ldl -o sqlite3
+sudo apt-get install libreadline6 libreadline6-dev
+gcc -Os -I. -DSQLITE_THREADSAFE=0 -DSQLITE_ENABLE_FTS4 \
+                                -DSQLITE_ENABLE_JSON1 \
+                                -DSQLITE_ENABLE_RTREE -DSQLITE_ENABLE_EXPLAIN_COMMENTS \
+                                -DHAVE_USLEEP -DHAVE_READLINE \
+                                shell.c sqlite3.c -ldl -lreadline -o sqlite3
+#build csv extension
+gcc -I. -g -fPIC -shared sqlite_csv.c -o csv.so
+
+#https://sqlite.org/howtocompile.html
+#https://sqlite.org/loadext.html
+#https://sqlite.org/csv.html

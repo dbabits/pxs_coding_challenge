@@ -1,0 +1,34 @@
+#!/bin/bash
+
+filename=$1
+giftcard_balance=$2
+
+usage() {
+   echo "Usage: $0 filename giftcard_balance"
+   exit 1
+}
+
+[ -n "$filename" ] && echo filename=$filename || usage
+[ -n "$giftcard_balance" ] && echo giftcard_balance=$giftcard_balance || usage
+
+
+cat <<EOF | `dirname $0`/sqlite-amalgamation-3200000/sqlite3 -header -column | tee >(grep summ)
+SELECT load_extension('`dirname $0`/sqlite-amalgamation-3200000/csv') as ''; --csv.so, compiled separately is loaded this way. Also can do: .load path/csv
+
+CREATE VIRTUAL TABLE temp.t USING csv(filename='$filename');
+SELECT t1.rowid,t2.rowid, t1.c0 || " + " || t2.c0 as combination, t1.c1 as first_price, t2.c1 as second_price, t1.c1+t2.c1 as summ 
+FROM t t1, t t2 
+WHERE t1.rowid < t2.rowid   --we need combinations, not permutations: (a,b) considered same as  (b,a), hence <
+   and summ<=$giftcard_balance
+ORDER BY summ DESC
+LIMIT 1;
+EOF
+
+exit $?
+
+if [[ $(ls -A) ]]; then
+    echo "there are files"
+else
+    echo "no files found"
+fi
+
