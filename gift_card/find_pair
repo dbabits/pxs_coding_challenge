@@ -29,14 +29,17 @@ usage() {
         Bluetooth Stereo, 6000
 
    Test cases:
-        $0 prices.txt 2500
-        Candy Bar 500, Earmuffs 2000
-        $0 prices.txt 2300
-        Paperback Book 700, Headphones 1400
-        $0 prices.txt 10000
-        Earmuffs 2000, Bluetooth Stereo 6000
-        $0 prices.txt 1100
-        Not possible
+        $0 `dirname $0`/prices.txt 2500
+            Candy Bar 500, Earmuffs 2000
+
+        $0 `dirname $0`/prices.txt 2300
+            Paperback Book 700, Headphones 1400
+
+        $0 `dirname $0`/prices.txt 10000
+            Earmuffs 2000, Bluetooth Stereo 6000
+
+        $0 `dirname $0`/prices.txt 1100
+            Not possible
 
 
    This program depends on sqlite csv extension, included in the distribution
