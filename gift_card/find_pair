@@ -62,7 +62,7 @@ usage() {
    exit 1
 }
 
-tempfile=$(tempfile) || exit 42
+tempfile=$(mktemp) || exit 42
 trap "rm $tempfile" EXIT
 
 filename=$1
