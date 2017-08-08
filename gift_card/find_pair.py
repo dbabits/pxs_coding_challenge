@@ -22,7 +22,7 @@ gifts=(
 
 ''' 
     for each item, iterate over all other items, sum up 2 prices, and find the smallest diff from total.
-    TODO: since the list (or file) is sorted by price, we can do binary search for the second item, by price 
+    TODO - since the list (or file) is sorted by price, we can do binary search for the second item, by price 
 '''
 def find_pair(total):
 
