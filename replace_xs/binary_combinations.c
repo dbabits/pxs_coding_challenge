@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 /*
-gcc -g binary_combinations.c && ./a.out 0X1XX
+gcc -g -std=c99 binary_combinations.c -o binary_combinations && ./binary_combinations 0X1XX
 0X1XX
 
 1: 00100
@@ -36,7 +36,7 @@ Task:
 The algorithm works by alternating Xs and Ys, effectively doing binary add with carry. X is printed as 0 and Y as 1
 It walks the string right-to-left,turning ALL Ys to Xs and (FIRST X to Y and print)
 Example: (need -std=c99 for gcc ver 4.8.3 20140911(not reqd for 5.4.0)(var declaration inside for loop)
-	gcc -g -std=c99 binary_combinations.c && ./a.out 0X1XX
+        gcc -g -std=c99 binary_combinations.c -o binary_combinations && ./binary_combinations 0X1XX
 	
 First, the string is printed with 0s in place of all Xs:                                      XX -> prints 00
 Iteration 1: right X becomes Y, and the string is printed:                                    XY -> prints 01
