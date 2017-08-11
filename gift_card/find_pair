@@ -77,16 +77,41 @@ SELECT load_extension('`dirname $0`/sqlite-amalgamation-3200000/csv') as ''; --c
 
 CREATE VIRTUAL TABLE temp.t USING csv(filename='$filename');
 
-.once $tempfile
-SELECT t1.rowid,t2.rowid, t1.c0 || " + " || t2.c0 as combination, t1.c1 as first_price, t2.c1 as second_price, t1.c1+t2.c1 as summ 
+.output $tempfile
+--SELECT  ' ' as '2 gifts:';
+SELECT --t1.rowid,t2.rowid,
+	   '2 gifts' as 'Number of Gifts'
+	  ,t1.c0 || " + " || t2.c0 as combination
+	  ,t1.c1 as first_price
+	  ,t2.c1 as second_price
+	  ,t1.c1+t2.c1 as summ 
 FROM t t1, t t2 
 WHERE t1.rowid < t2.rowid   --we need combinations, not permutations: (a,b) considered same as  (b,a), hence <
    and summ<=$giftcard_balance
 ORDER BY summ DESC
 LIMIT 1;
+
+--SELECT  ' ' as '3 gifts:';
+
+SELECT --t1.rowid,t2.rowid,t3.rowid,
+	 '3 gifts' as 'Number of Gifts'
+	 ,t1.c0 || " + " || t2.c0 || " + " || t3.c0 as combination
+	 ,t1.c1 as first_price
+	 ,t2.c1 as second_price
+	 ,t3.c1 as third_price
+	 ,t1.c1+t2.c1+t3.c1 as summ 
+FROM t t1, t t2, t t3
+WHERE t1.rowid < t2.rowid and t2.rowid < t3.rowid  --we need combinations, not permutations: (a,b) considered same as  (b,a), hence <
+   and summ<=$giftcard_balance
+ORDER BY summ DESC
+LIMIT 1;
+
 EOF
 
-grep --quiet summ $tempfile #if there are no rows returned, there won't be no header line with summ
-[ $? -eq 0 ] && cat $tempfile || echo "Not possible"
+grep -B 2 '2 gifts' $tempfile || echo "2 gifts Not possible"
+grep -B 2 '3 gifts' $tempfile || echo "3 gifts Not possible"
+
+#grep --quiet summ $tempfile #if there are no rows returned, there won't be no header line with summ
+#[ $? -eq 0 ] && cat $tempfile || echo "Not possible"
 
 
