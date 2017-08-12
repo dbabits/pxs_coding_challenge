@@ -55,7 +55,27 @@ def get_num_end(mm,commapos,newlpos):
     print ("get_num_end commapos=%d, newlpos=%d,between=%s" % (commapos,newlpos,between))
     return commapos,newlpos
 
-def open_file2(filename,total):
+def  get_l(mm,fromm):
+    mm.seek(fromm, os.SEEK_SET)
+    line=mm.readline().strip()
+    desc, price = line.strip().split(',')
+    price=int(price)
+    print("get_l():fromm=%d,tell=%d,line=[%s],desc=[%s],price=[%d]" % (fromm, mm.tell(), line,desc,price))  # 0,15
+    return mm.tell(),desc,price
+
+def  get_r(mm,fromm):
+    #rpos = mm.rfind("\n",0,pointer)
+    #logging.debug("\nget_r():rpos=%d,pointer=%d,tell=%d" % (rpos, pointer, mm.tell())) #105,106
+    to = mm.rfind("\n",0,fromm-1)
+    #logging.debug("get_r():fromm=%d,to=%d,tell=%d" % (fromm,to, mm.tell()))  # 82,106
+    mm.seek(to+1, os.SEEK_SET)
+    line = mm.readline().strip()
+    desc, price = line.strip().split(',')
+    price = int(price)
+    print("get_r():fromm=%d,to=%d,tell=%d,line=[%s],desc=[%s],price=[%d]" % (fromm,to, mm.tell(),line,desc,price))  # 82,106
+    return to,desc,price
+
+def open_file2(filename,target):
     with open(filename, "r+b") as f:
         # memory-map the file, size 0 means whole file
         mm = mmap.mmap(f.fileno(), 0)
@@ -64,10 +84,48 @@ def open_file2(filename,total):
         #int minDiff = INT_MAX;
         #int end = nums.size() - 1;
         #sort(nums.begin(), nums.end() );
-        start = 0;
+        start = 0
         end=mm.size()
+
+        '''
+        start = get_l(mm, start)
+        start = get_l(mm, start)
+        start = get_l(mm, start)
+        start = get_l(mm, start)
+
+        end=get_r(mm,end)
+        end=get_r(mm,end)
+        end = get_r(mm, end)
+        end = get_r(mm, end)
+        return
+        '''
+        best_diff=sys.maxint
+        diff=sys.maxint
+        best_combo=()
+        while (start < end):
+            logging.debug("if {start}<{end}:".format(start=start,end=end))
+            nextstart,desc1,price1=get_l(mm, start)
+            nextend,desc2,price2=get_r(mm, end)
+            sum=price1+price2
+            #diff = min(diff, abs(sum - target))
+            diff=target-sum
+
+            if diff >= 0 and diff < best_diff:
+                best_diff=diff
+                best_combo=((desc1,price1),(desc2,price2))
+
+            if (sum > target):
+                end=nextend     #=end--
+            else:
+                start=nextstart #=start++
+
+        #logging.debug("price1=%d,price2=%d,sum=%d,target=%d,best_diff=%d".format(best_combo))
+        logging.debug("best_combo={}".format(best_combo))
+        return best_combo
+
         commapos=mm.rfind(",")
-        newlpos = mm.rfind("\n")
+        rpos = mm.rfind("\n")
+        print("rpos=%d,tell=%d" % (rpos,  mm.tell()))
 
         while commapos !=-1:
             mm.seek(commapos+1, os.SEEK_SET)
@@ -83,7 +141,7 @@ def open_file2(filename,total):
         #print ("mm.rfind(,)=%d" % (mm.rfind("\n",mm.size()-10)))
         #mm.seek(end, os.SEEK_SET)
         print("mm.tell()=%d" % (mm.tell()))
-        
+
         '''
         while (start < end) {
             int sum = nums[end] + nums[start];
@@ -155,8 +213,8 @@ if args.verbose:
 #logging.basicConfig(format='%(levelname)s:%(message)s',level=loglevel)
 logging.basicConfig(format='%(message)s',level=loglevel)
 
-open_file2(filename=args.filename,total=args.total)
-
+open_file2(filename=args.filename,target=args.total)
+exit (0)
 assert(find_pair (400)  ==[('bar', 125),      ('foo', 250)])
 assert(find_pair (2500) ==[("candy bar", 500),("earmuffs",2000)])
 assert(find_pair (2300) ==[('foo', 250),      ('earmuffs', 2000)])
