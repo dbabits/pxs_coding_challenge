@@ -56,14 +56,24 @@ def get_num_end(mm,commapos,newlpos):
     return commapos,newlpos
 
 def  get_l(mm,fromm):
-    mm.seek(fromm, os.SEEK_SET)
-    line=mm.readline().strip()
-    desc, price = line.strip().split(',')
-    price=int(price)
-    print("get_l():fromm=%d,tell=%d,line=[%s],desc=[%s],price=[%d]" % (fromm, mm.tell(), line,desc,price))  # 0,15
-    return mm.tell(),desc,price
+    mm.seek(fromm, os.SEEK_SET)           #set the file pointer at the beginning of the line
+    line=mm.readline().strip()            #read the line (this moves the pointer forward)
+    to=mm.tell()                          #next time, start from the current position
+    desc, price = line.strip().split(',') #parse the line
+    price=int(price)                      #convert to int
+    logging.debug("get_l():from=%d,to=%d,line=[%s],desc=[%s],price=[%d]" % (fromm, to, line,desc,price))
+    return to,desc,price                  #Since we're moving L->R here, the next From will be the current To
 
-def  get_r(mm,fromm):
+def  get_r(mm,to):
+    fromm = mm.rfind("\n",0,to-1)         #To points to EOL. Backtrack from given position to find the beginning of this line
+    mm.seek(fromm+1, os.SEEK_SET)         #set the file pointer
+    line = mm.readline().strip()          #read the line (this moves the pointer forward)
+    desc, price = line.strip().split(',') #parse the line
+    price = int(price)                    #convert to int
+    logging.debug("get_r():from=%d,to=%d,tell=%d,line=[%s],desc=[%s],price=[%d]" % (fromm,to, mm.tell(),line,desc,price))
+    return fromm,desc,price               #Since we're moving R->L here, the next To will be current From
+
+def  get_r_old(mm,fromm):
     #rpos = mm.rfind("\n",0,pointer)
     #logging.debug("\nget_r():rpos=%d,pointer=%d,tell=%d" % (rpos, pointer, mm.tell())) #105,106
     to = mm.rfind("\n",0,fromm-1)
@@ -72,7 +82,7 @@ def  get_r(mm,fromm):
     line = mm.readline().strip()
     desc, price = line.strip().split(',')
     price = int(price)
-    print("get_r():fromm=%d,to=%d,tell=%d,line=[%s],desc=[%s],price=[%d]" % (fromm,to, mm.tell(),line,desc,price))  # 82,106
+    logging.debug("get_r():fromm=%d,to=%d,tell=%d,line=[%s],desc=[%s],price=[%d]" % (fromm,to, mm.tell(),line,desc,price))  # 82,106
     return to,desc,price
 
 def open_file2(filename,target):
@@ -102,57 +112,42 @@ def open_file2(filename,target):
         best_diff=sys.maxint
         diff=sys.maxint
         best_combo=()
+        #We need to break when Left To becomes > Right From (overlap)
         while (start < end):
             logging.debug("if {start}<{end}:".format(start=start,end=end))
             nextstart,desc1,price1=get_l(mm, start)
-            nextend,desc2,price2=get_r(mm, end)
+            nextend,  desc2,price2=get_r(mm, end)
             sum=price1+price2
             #diff = min(diff, abs(sum - target))
             diff=target-sum
 
-            if diff >= 0 and diff < best_diff:
+            if diff >= 0 and diff < best_diff and desc1!=desc2:
                 best_diff=diff
                 best_combo=((desc1,price1),(desc2,price2))
+
+            if diff==0:
+                logging.debug( "optimization2:breaking off because diff=0:perfect match, no need to look further")
+                break
 
             if (sum > target):
                 end=nextend     #=end--
             else:
                 start=nextstart #=start++
 
-        #logging.debug("price1=%d,price2=%d,sum=%d,target=%d,best_diff=%d".format(best_combo))
         logging.debug("best_combo={}".format(best_combo))
         return best_combo
-
-        commapos=mm.rfind(",")
-        rpos = mm.rfind("\n")
-        print("rpos=%d,tell=%d" % (rpos,  mm.tell()))
-
-        while commapos !=-1:
-            mm.seek(commapos+1, os.SEEK_SET)
-            price2 = int(mm.readline().strip())
-            print("commapos=%d, price2=[%d], tell=%d" % (commapos, price2,mm.tell()))
-            commapos = mm.rfind(",", 0, commapos)
-
-            #commapos, newlpos=get_num_end(mm,commapos,newlpos)
-            #print("commapos=%d, newlpos=%d" % (commapos,newlpos))
-            #commapos=mm.rfind(",", 0,commapos)
-            #newlpos = mm.rfind("\n", 0, newlpos)
-
-        #print ("mm.rfind(,)=%d" % (mm.rfind("\n",mm.size()-10)))
-        #mm.seek(end, os.SEEK_SET)
-        print("mm.tell()=%d" % (mm.tell()))
 
         '''
         while (start < end) {
             int sum = nums[end] + nums[start];
-            minDiff = min(minDiff, abs(sum - target) );
+            diff = min(diff, abs(sum - target) );
             if (sum > target) {
                 end--;
             } else {
                 start++;
             }
         }
-        return minDiff;
+        return diff;
         '''
 ''' 
     for each item, iterate over all other items, sum up 2 prices, and find the smallest diff from total.
