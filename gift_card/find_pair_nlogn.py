@@ -45,15 +45,6 @@ def open_file(filename,total):
             if diff >= 0 and (diff < best_diff or best_diff is None):
                 best_diff = diff
 
-def get_num_end(mm,commapos,newlpos):
-    commapos = mm.rfind(",", 0, commapos)
-    newlpos = mm.rfind("\n", 0, newlpos)
-    savedpos=mm.tell()
-    mm.seek(commapos,os.SEEK_SET)
-    between=mm.readline()
-    mm.seek(savedpos)
-    print ("get_num_end commapos=%d, newlpos=%d,between=%s" % (commapos,newlpos,between))
-    return commapos,newlpos
 
 def  get_l(mm,fromm):
     mm.seek(fromm, os.SEEK_SET)           #set the file pointer at the beginning of the line
@@ -73,85 +64,41 @@ def  get_r(mm,to):
     logging.debug("get_r():from=%d,to=%d,tell=%d,line=[%s],desc=[%s],price=[%d]" % (fromm,to, mm.tell(),line,desc,price))
     return fromm,desc,price               #Since we're moving R->L here, the next To will be current From
 
-def  get_r_old(mm,fromm):
-    #rpos = mm.rfind("\n",0,pointer)
-    #logging.debug("\nget_r():rpos=%d,pointer=%d,tell=%d" % (rpos, pointer, mm.tell())) #105,106
-    to = mm.rfind("\n",0,fromm-1)
-    #logging.debug("get_r():fromm=%d,to=%d,tell=%d" % (fromm,to, mm.tell()))  # 82,106
-    mm.seek(to+1, os.SEEK_SET)
-    line = mm.readline().strip()
-    desc, price = line.strip().split(',')
-    price = int(price)
-    logging.debug("get_r():fromm=%d,to=%d,tell=%d,line=[%s],desc=[%s],price=[%d]" % (fromm,to, mm.tell(),line,desc,price))  # 82,106
-    return to,desc,price
-
-def open_file2(filename,target):
+def walk_file(filename,target):
     with open(filename, "r+b") as f:
-        # memory-map the file, size 0 means whole file
-        mm = mmap.mmap(f.fileno(), 0)
-        print "filename={filename},size={size} bytes".format(filename=filename,size=mm.size())
+        mm = mmap.mmap(f.fileno(), 0) # memory-map the file, size 0 means whole file
+        logging.debug("filename={filename},size={size} bytes".format(filename=filename,size=mm.size()))
 
-        #int minDiff = INT_MAX;
-        #int end = nums.size() - 1;
-        #sort(nums.begin(), nums.end() );
+        best_diff=diff=sys.maxint
+        best_combo=()
         start = 0
         end=mm.size()
-
-        '''
-        start = get_l(mm, start)
-        start = get_l(mm, start)
-        start = get_l(mm, start)
-        start = get_l(mm, start)
-
-        end=get_r(mm,end)
-        end=get_r(mm,end)
-        end = get_r(mm, end)
-        end = get_r(mm, end)
-        return
-        '''
-        best_diff=sys.maxint
-        diff=sys.maxint
-        best_combo=()
-        #We need to break when Left To becomes > Right From (overlap)
-        while (start < end):
+        while (start < end): #We break when left and right overlap
             logging.debug("if {start}<{end}:".format(start=start,end=end))
             nextstart,desc1,price1=get_l(mm, start)
             nextend,  desc2,price2=get_r(mm, end)
             sum=price1+price2
-            #diff = min(diff, abs(sum - target))
             diff=target-sum
 
-            if diff >= 0 and diff < best_diff and desc1!=desc2:
+            if diff >= 0 and diff < best_diff and desc1!=desc2: #The condition is not to pick same item twice
                 best_diff=diff
                 best_combo=((desc1,price1),(desc2,price2))
 
-            if diff==0:
-                logging.debug( "optimization2:breaking off because diff=0:perfect match, no need to look further")
-                break
-
-            if (sum > target):
+            if  (sum > target):
                 end=nextend     #=end--
-            else:
+            elif(sum < target):
                 start=nextstart #=start++
+            else:
+                logging.debug( "optimization2:breaking off because sum=target:perfect match, no need to look further")
+                break
 
         logging.debug("best_combo={}".format(best_combo))
         return best_combo
 
-        '''
-        while (start < end) {
-            int sum = nums[end] + nums[start];
-            diff = min(diff, abs(sum - target) );
-            if (sum > target) {
-                end--;
-            } else {
-                start++;
-            }
-        }
-        return diff;
-        '''
 ''' 
     for each item, iterate over all other items, sum up 2 prices, and find the smallest diff from total.
     TODO - since the list (or file) is sorted by price, we can do binary search for the second item, by price 
+    O(n^2)
 '''
 def find_pair(total):
 
@@ -199,17 +146,32 @@ parser.add_argument("-v", "--verbose", help="make it verbose",action="store_true
 #parser.add_argument("-f", "--filename", type=file, help="filename to parse")
 parser.add_argument("-t", "--total", dest='total',type=int, help="card balance")
 parser.add_argument("-f", "--filename",  help="filename to parse")
+parser.add_argument("-x", "--runtests", help="run built-in tests(hard-codes prices.txt file)",action="store_true")
 
 args = parser.parse_args()
 loglevel=logging.INFO
 if args.verbose:
     loglevel=logging.DEBUG
 
-#logging.basicConfig(format='%(levelname)s:%(message)s',level=loglevel)
-logging.basicConfig(format='%(message)s',level=loglevel)
+logging.basicConfig(format='%(levelname)s:%(message)s',level=loglevel)
 
-open_file2(filename=args.filename,target=args.total)
+if args.runtests:
+  assert(walk_file (filename='prices.txt',target=2500) ==(('Candy Bar', 500), ('Earmuffs', 2000)) )
+  assert(walk_file (filename='prices.txt',target=2300) ==(('Paperback Book', 700), ('Headphones', 1400)) )
+  assert(walk_file (filename='prices.txt',target=10000)==(('Earmuffs', 2000), ('Bluetooth Stereo', 6000)) )
+  assert(walk_file (filename='prices.txt',target=1100) ==() )
+  print "All tests passed, exiting"
+else:
+  best_combo = walk_file(filename=args.filename, target=args.total)
+  if len(best_combo) == 0:
+      print
+      "Not possible"
+  else:
+      print("best_combo={}".format(best_combo))
+
 exit (0)
+
+
 assert(find_pair (400)  ==[('bar', 125),      ('foo', 250)])
 assert(find_pair (2500) ==[("candy bar", 500),("earmuffs",2000)])
 assert(find_pair (2300) ==[('foo', 250),      ('earmuffs', 2000)])
