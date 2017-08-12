@@ -216,6 +216,21 @@ cat <<EOF | $sqlite3 $db -header -column
 		 --ORDER BY summ DESC	--Fullscan Steps:                      5, Sort Operations:                     1
 	LIMIT 1		-- Fullscan Steps:                      1  (5 without it)
          ;
+		 
+	SELECT --t1.rowid,t2.rowid,t3.rowid,
+		 '3 gifts' as 'Number of Gifts'
+		 ,t1.c0 || " + " || t2.c0 || " + " || t3.c0 as combination
+		 ,t1.c1 as first_price
+		 ,t2.c1 as second_price
+		 ,t3.c1 as third_price
+		 ,t1.c1+t2.c1+t3.c1 as summ 
+	FROM t t1, t t2, t t3
+	WHERE t1.rowid < t2.rowid and t2.rowid < t3.rowid  --we need combinations, not permutations: (a,b) considered same as  (b,a), hence <
+	   and summ<=$giftcard_balance
+	--ORDER BY summ DESC
+	ORDER BY t1.rowid DESC,t2.rowid DESC,t3.rowid DESC
+	LIMIT 1;
+		 
 EOF
 
 ls -ltr ${db}*
