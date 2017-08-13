@@ -22,7 +22,7 @@ usage() {
    cat <<EOF 
    $message
    
-   This program tries to spend the most of a giftcard's balance on 2 and on 3 gifts out of a list.
+   This program tries to spend the most of a giftcard's balance separately on 2 and on 3 gifts from the list.
    Usage: 
         $0 -f filename -t giftcard_balance [-d (show debug info,will overwhelm with useful stats)]
  
@@ -54,12 +54,12 @@ usage() {
             3 gifts  Not possible
 
    This program uses sqlite, and there are 2 different ways to use it:
-   1) Convert text file into sqlite format, and build index on price.     
-      This gives O(n log n) compute complexity, but will take O(2n) space + time for initial load.
-   2) Process text file using csv extension,which I compiled, included in the distribution. Binaries and commands used for compilation are included.
-      This will be O(n^2) compute, but will not take extra space.
+    1) Convert text file into sqlite format, and build index on price.     
+       This gives O(n log n) compute complexity because index is used to select 2nd/3rd item, but will take O(2n) space + time for initial convertion.
+    2) Process text file using csv extension,which I compiled, included in the distribution. Binaries and commands used for compilation are included.
+       This will be O(n^2) compute for 2 gift case(nested table scans), but will not take extra space.
 
-    Details: 
+	Details: 
             https://sqlite.org/howtocompile.html
             https://sqlite.org/csv.html
             https://sqlite.org/loadext.html
@@ -86,11 +86,14 @@ done
 [ -n "$giftcard_balance" ] && echo "giftcard_balance=$giftcard_balance" || usage
 echo
 
-[ -z "$debug" ] && tempfile=$(mktemp) && trap "rm -v $tempfile" EXIT 
+[ -z "$debug" ] && tempfile=$(mktemp) && trap "rm  $tempfile" EXIT 
 [ -n "$debug" ] && tempfile=stdout && stats_on_off="on" || stats_on_off="off"
 
 db="`dirname $0`/prices.sqlite"
 sqlite3="`dirname $0`/sqlite-amalgamation-3200000/sqlite3"
+
+[ -x "$sqlite3" ] || { echo "$sqlite3 does not exist or not executable, exiting 1"; exit 1; }
+[ -w "`dirname $0`" ] || { echo "`dirname $0` must be writeable to create sqlite db, exiting 1."; exit 1; }
 
 read -r -d '' sqls << EOF
 --.width 3 3 3 7 50
@@ -131,7 +134,7 @@ read -r -d '' sqls << EOF
 EOF
 
 
-echo "---Approach 1: Load text file into sqlite format to achieve O(n log n) - see help(-h) for details---"; echo
+echo "---Approach 1: Load text file into sqlite format to utilize index for O(n log n) - see help(-h) for details and scanstats(-d)---"; echo
 $sqlite3 $db <<EOF
 	DROP TABLE IF  EXISTS t;
 	CREATE TABLE IF NOT EXISTS t (c0,c1 INTEGER);
@@ -139,9 +142,21 @@ $sqlite3 $db <<EOF
 EOF
 
 cat $filename|removecomments|removeblanks|trimspace|$sqlite3 -separator ',' $db ".import /dev/stdin t"
+$sqlite3 $db -header -column <<<"$sqls"
 
-cat <<EOF | $sqlite3 $db -header -column
-$sqls   
+if [ -z "$debug" ]; then
+    grep -B 2 '2 gifts' $tempfile || echo "2 gifts  Not possible"
+    grep      '3 gifts' $tempfile || echo "3 gifts  Not possible"
+fi
+
+echo
+echo "---Approach 2: Use virtual table functionality (direct navigation of csv without copying  into sqlite format): O(n^2) - see help(-h) for details and scanstats(-d)---";echo
+
+cat <<EOF | $sqlite3 -header -column 
+--load csv.so module, compiled separately. Also can do: SELECT load_extension(path)
+.load `dirname $0`/sqlite-amalgamation-3200000/csv  
+	CREATE VIRTUAL TABLE temp.t USING csv(filename='$filename');
+	$sqls
 EOF
 
 if [ -z "$debug" ]; then
@@ -150,22 +165,7 @@ if [ -z "$debug" ]; then
 fi
 
 echo
-echo "---Approach 2: Use virtual table functionality (direct navigation of csv without copying  into sqlite format): O(n^2) - see help(-h) for details---";echo
-
-cat <<EOF | $sqlite3 -header -column
---SELECT load_extension('`dirname $0`/sqlite-amalgamation-3200000/csv') as ''; --csv.so, compiled separately is loaded this way. Also can do: .load path/csv
-.load `dirname $0`/sqlite-amalgamation-3200000/csv
-CREATE VIRTUAL TABLE temp.t USING csv(filename='$filename');
-$sqls
-EOF
-
-if [ -z "$debug" ]; then
-    grep -B 2 '2 gifts' $tempfile || echo "2 gifts  Not possible"
-    grep      '3 gifts' $tempfile || echo "3 gifts  Not possible"
-fi
-
-echo
-ls -ltr  ${db}*
+[ -n "$debug" ] && ls -ltr  ${db}*
 
 
 <<COMMENT

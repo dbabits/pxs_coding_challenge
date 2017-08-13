@@ -10,11 +10,11 @@ def make_regression_test_file():
     file=os.path.dirname(os.path.realpath(__file__))+"/regression_test.txt"
     script='''
 cat <<EOF > {file}
-Candy Bar, 500
-Paperback Book, 700
-Detergent, 1000
-Headphones, 1400
-Earmuffs, 2000
+Candy Bar,        500
+Paperback Book,   700
+Detergent,        1000
+Headphones,       1400
+Earmuffs,         2000
 Bluetooth Stereo, 6000
 EOF
 ls -l {file}*
@@ -26,7 +26,7 @@ def  walk_l(mm,fromm):
     mm.seek(fromm, os.SEEK_SET)           #set the file pointer at the beginning of the line
     line=mm.readline().strip()            #read the line (this moves the pointer forward)
     to=mm.tell()                          #next time, start from the current position
-    desc, price = line.strip().split(',') #parse the line
+    desc, price = line.split(',') #parse the line
     price=int(price)                      #convert to int
     logging.debug("walk_l():from=%d,to=%d,line=[%s],desc=[%s],price=[%d]" % (fromm, to, line,desc,price))
     return to,desc,price                  #Since we're moving L->R here, the next From will be the current To
@@ -35,7 +35,7 @@ def  walk_r(mm,to):
     fromm = mm.rfind("\n",0,to-1)         #To points to EOL. Backtrack from given position to find the beginning of this line
     mm.seek(fromm+1, os.SEEK_SET)         #set the file pointer
     line = mm.readline().strip()          #read the line (this moves the pointer forward)
-    desc, price = line.strip().split(',') #parse the line
+    desc, price = line.split(',')         #parse the line
     price = int(price)                    #convert to int
     logging.debug("walk_r():from=%d,to=%d,tell=%d,line=[%s],desc=[%s],price=[%d]" % (fromm,to, mm.tell(),line,desc,price))
     return fromm,desc,price               #Since we're moving R->L here, the next To will be the current From
