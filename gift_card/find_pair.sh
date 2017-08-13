@@ -86,8 +86,7 @@ done
 [ -n "$giftcard_balance" ] && echo "giftcard_balance=$giftcard_balance" || usage
 echo
 
-tempfile=$(mktemp) || exit 42
-[ -z "$debug" ] && trap "rm -v $tempfile" EXIT 
+[ -z "$debug" ] && tempfile=$(mktemp) && trap "rm -v $tempfile" EXIT 
 [ -n "$debug" ] && tempfile=stdout && stats_on_off="on" || stats_on_off="off"
 
 db="`dirname $0`/prices.sqlite"
