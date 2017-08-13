@@ -46,7 +46,7 @@ def walk_file(filename,target):
         mm = mmap.mmap(f.fileno(), 0)     # memory-map the file, size 0 means whole file
         logging.debug("filename={filename},size={size} bytes".format(filename=filename,size=mm.size()))
 
-        best_diff=diff=sys.maxint
+        best_diff=diff=sys.maxsize
         best_combo=()
         start = 0
         end=mm.size()
@@ -69,10 +69,13 @@ def walk_file(filename,target):
                 logging.debug( "optimization2:breaking off because sum=target:perfect match, no need to look further")
                 break
 
-        logging.debug("best_combo={}".format(best_combo))
+        logging.debug("best_combo={0}".format(best_combo))
         return best_combo
 
 def main():
+    if sys.version_info[0] != 2 or sys.version_info[1] < 7:
+        print("This script requires Python version 2.7+  It was not tested with Python 3. You are running version {0}".format(sys.version_info))
+        sys.exit(1)
     parser = argparse.ArgumentParser(description='Find the best combination of 2 items to spend max gift card balance')
     parser.add_argument("-v", "--verbose", help="make it verbose",action="store_true")
     parser.add_argument("-f", "--filename",  help="filename to parse",required=True)
@@ -91,13 +94,13 @@ def main():
       assert(walk_file (filename=file,target=2300) ==(('Paperback Book', 700), ('Headphones', 1400)) )
       assert(walk_file (filename=file,target=10000)==(('Earmuffs', 2000), ('Bluetooth Stereo', 6000)) )
       assert(walk_file (filename=file,target=1100) ==() )
-      print "All tests passed, exiting"
+      print ("All tests passed, exiting")
     else:
       best_combo = walk_file(filename=args.filename, target=args.target)
       if len(best_combo) == 0:
-          print "Not possible"
+          print ("Not possible")
       else:
-          print("best_combo={}".format(best_combo))
+          print("best_combo={0}".format(best_combo))
 
     exit (0)
 
