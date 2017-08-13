@@ -13,69 +13,221 @@ trimspace() {
    sed 's/[[:space:]]*|[[:space:]]*/|/g'
 }
 
+validate_int() {
+	 [[ $1 =~ ^-?[0-9]+$ ]] && return 0 || return 1;
+}
+
 usage() {
-   echo "
-   Goal:
-        Write a program to find the best two items. It takes two inputs:
-        1. A filename with a list of sorted prices
-        2. The balance of your gift card
-        If no two items have a sum that is less than or equal to the balance on the gift card, print 'Not possible'
-
-   Usage: 
-        $0 filename giftcard_balance
+   local message=$1
+   cat <<EOF 
+   $message
    
+   This program finds the best 2 and best 3 gifts that spend the most of the giftcard balance.
+   Usage: 
+	    $0 -f filename -t giftcard_balance [-d (debug)]
+ 
+	    The file with a list of sorted prices is expected to be in this format:
+			Candy Bar, 500
+			Paperback Book, 700
+  
    Sample run:
+        $0 -f ./prices.txt -t 2300
+		
+		nGifts   combination                                         first_price  second_price  third_price  summ
+		-------  --------------------------------------------------  -----------  ------------  -----------  ----------
+		2 gifts  Paperback Book + Headphones                         700          1400          NA           2100
+		3 gifts  Candy Bar + Paperback Book + Detergent              500          700           1000         2200
 
-        $0 prices.txt 2300
+		$ ./find_pair.sh -f ./prices.txt -t 2100
+		
+		nGifts   combination                                         first_price  second_price  third_price  summ
+		-------  --------------------------------------------------  -----------  ------------  -----------  ----------
+		2 gifts  Paperback Book + Headphones                         700          1400          NA           2100
+		3 gifts  Not possible
 
-        rowid       rowid       combination                  first_price  second_price  summ
-        ----------  ----------  ---------------------------  -----------  ------------  ----------
-        2           4           Paperback Book + Headphones   700          1400         2100
-
-   The file is expected to be in this format:
-        $ cat prices.txt
-        Candy Bar, 500
-        Paperback Book, 700
-        Detergent, 1000
-        Headphones, 1400
-        Earmuffs, 2000
-        Bluetooth Stereo, 6000
-
+		
    Test cases:
-        $0 `dirname $0`/prices.txt 2500
-            Candy Bar 500, Earmuffs 2000
+        $0 -f `dirname $0`/prices.txt -t 2500
+			nGifts   combination                                         first_price  second_price  third_price  summ
+			-------  --------------------------------------------------  -----------  ------------  -----------  ----------
+			2 gifts  Candy Bar + Earmuffs                                500          2000          NA           2500
+			3 gifts  Candy Bar + Paperback Book + Detergent              500          700           1000         2200
 
-        $0 `dirname $0`/prices.txt 2300
-            Paperback Book 700, Headphones 1400
+        $0 -f `dirname $0`/prices.txt -t 2300
+			2 gifts  Paperback Book + Headphones                         700          1400          NA           2100
+			3 gifts  Candy Bar + Paperback Book + Detergent              500          700           1000         2200
 
-        $0 `dirname $0`/prices.txt 10000
-            Earmuffs 2000, Bluetooth Stereo 6000
+        $0 -f `dirname $0`/prices.txt -t 10000
+			2 gifts  Earmuffs + Bluetooth Stereo                         2000         6000          NA           8000
+			3 gifts  Headphones + Earmuffs + Bluetooth Stereo            1400         2000          6000         9400
 
-        $0 `dirname $0`/prices.txt 1100
-            Not possible
+        $0 -f `dirname $0`/prices.txt -t 2100
+			2 gifts  Paperback Book + Headphones                         700          1400          NA           2100
+			3 gifts  Not possible
+		
+		$0 -f `dirname $0`/prices.txt -t 1100
+			2 gifts  Not possible
+			3 gifts  Not possible
 
+   This program uses sqlite, and there are 2 different ways to use it:
+   1) Convert text file into sqlite format, and build index on price.     
+	  This gives O(n log n) compute complexity, but will take O(2n) space + time for initial load.
+   2) Process text file using csv extension,which I compiled, included in the distribution. Binaries and commands used for compilation are included.
+	  This will be O(n^2) compute, but will not take extra space.
 
-   This program depends on sqlite csv extension, included in the distribution
-   It works by cross-joining the same table to itself, filtering by sum of prices and excluding permutations of the same combination (e.g. (a,b) is same as (b,a)
-   The file is not loaded into memory nor converted into sqlite's format,but simply mapped. 
-   It does not do it optimally because the file is sorted, and it doesn't take advantage of it.
-   However, I though it's elegant and deserves to be shown.
-   Converting to sqlite format would likely speed it up because an index can be created which will take advantage of sort.
-
-   Big O: O(n^2) if file is mapped (without indexing).
-          O(n log n) if index is used (can be clustered which will take advantage of pre-sorted data) 
-
-   Details: 
+    Details: 
             https://sqlite.org/howtocompile.html
             https://sqlite.org/csv.html
             https://sqlite.org/loadext.html
+	
+	$message
 
-            Actual commands used for compilation are in sqlite-amalgamation-3200000/build
-   "
+EOF
    exit 1
 }
 
+debug=
+while getopts "hdf:t:" opt; do
+	case "$opt" in
+		f) filename="$OPTARG";;
+		t) giftcard_balance="$OPTARG"
+		   validate_int $giftcard_balance  ||  usage "ERROR: -t arg must be an integer" 
+		;;
+
+		d) debug=1;;
+		h) usage;;
+		*) usage;;
+	esac
+done
+
+[ -n "$filename" ]         && echo "filename=$filename" || usage
+[ -n "$giftcard_balance" ] && echo "giftcard_balance=$giftcard_balance" || usage
+echo
+
+tempfile=$(mktemp) || exit 42
+[ -z "$debug" ] && trap "rm -v $tempfile" EXIT
+[ -n "$debug" ] && tempfile=stdout && stats_on_off="on" || stats_on_off="off"
+
+db="`dirname $0`/prices.sqlite"
+sqlite3="`dirname $0`/sqlite-amalgamation-3200000/sqlite3"
+
+
+echo "---First example: load text file into sqlite format to achieve O(n log n) - see help for details---"; echo
+$sqlite3 $db <<EOF
+
+DROP TABLE IF  EXISTS t;
+CREATE TABLE IF NOT EXISTS t (c0,c1 INTEGER);
+CREATE INDEX IF NOT EXISTS idx1 ON t(c1) ;
+EOF
+
+cat $filename|removecomments|removeblanks|trimspace|$sqlite3 -separator ',' $db ".import /dev/stdin t"
+
+cat <<EOF | $sqlite3 $db -header -column
+--.width 3 3 3 7 50
+.width 7 50
+.stats $stats_on_off
+.scanstats $stats_on_off
+.output $tempfile
+	--EXPLAIN QUERY PLAN
+	SELECT 
+		  '2 gifts' 			   as 'nGifts'
+		  ,t1.c0 || " + " || t2.c0 as combination
+		  ,t1.c1                   as first_price
+		  ,t2.c1                   as second_price
+		  ,'NA'					   as third_price
+		  ,t1.c1+t2.c1             as summ 
+	FROM t t1, t t2 
+	WHERE t1.rowid < t2.rowid               --we need combinations, not permutations: (a,b) considered same as  (b,a), hence <
+	     AND  summ<=$giftcard_balance
+    ORDER BY summ DESC				        --Fullscan Steps:5, Sort Operations:1
+	LIMIT 1									--Fullscan Steps:1  (5 without it)
+    ;
+.header off	 
+    --EXPLAIN QUERY PLAN
+	SELECT 
+		 '3 gifts'                                  as 'nGifts'
+		 ,t1.c0 || " + " || t2.c0 || " + " || t3.c0 as combination
+		 ,t1.c1                                     as first_price
+		 ,t2.c1                                     as second_price
+		 ,t3.c1                                     as third_price
+		 ,t1.c1+t2.c1+t3.c1                         as summ 
+	FROM t t1, t t2, t t3
+	WHERE t1.rowid < t2.rowid AND t2.rowid < t3.rowid   --we need combinations, not permutations: (a,b) considered same as  (b,a), hence <
+	     AND summ<=$giftcard_balance
+    ORDER BY summ DESC  								-- This makes it do: USE TEMP B-TREE FOR ORDER BY
+	LIMIT 1;
+		 
+EOF
+
+if [ -z "$debug" ]; then
+	grep -B 2 '2 gifts' $tempfile || echo "2 gifts  Not possible"
+	grep      '3 gifts' $tempfile || echo "3 gifts  Not possible"
+fi
+
+echo
+echo "---Second example: Using Virtual table functionality (direct navigation of csv without copying  into sqlite format), O(n^2) - see help for details---"
+
+cat <<EOF | $sqlite3 -header -column
+SELECT load_extension('`dirname $0`/sqlite-amalgamation-3200000/csv') as ''; --csv.so, compiled separately is loaded this way. Also can do: .load path/csv
+CREATE VIRTUAL TABLE temp.t USING csv(filename='$filename');
+
+.width 7 50
+.stats $stats_on_off
+.scanstats $stats_on_off
+.output $tempfile
+
+	--EXPLAIN QUERY PLAN
+	SELECT '2 gifts'               as 'nGifts'
+		  ,t1.c0 || " + " || t2.c0 as combination
+		  ,t1.c1                   as first_price
+		  ,t2.c1                   as second_price
+		  ,'NA'					   as third_price
+		  ,t1.c1+t2.c1             as summ 
+	FROM t t1, t t2 
+	WHERE t1.rowid < t2.rowid   --we need combinations, not permutations: (a,b) considered same as  (b,a), hence <
+	   and summ<=$giftcard_balance
+	ORDER BY summ DESC
+	LIMIT 1;
+
+.header off	 
+
+	SELECT
+		 '3 gifts'                                  as 'nGifts'
+		 ,t1.c0 || " + " || t2.c0 || " + " || t3.c0 as combination
+		 ,t1.c1                                     as first_price
+		 ,t2.c1                                     as second_price
+		 ,t3.c1                                     as third_price
+		 ,t1.c1+t2.c1+t3.c1                         as summ 
+	FROM t t1, t t2, t t3
+	WHERE t1.rowid < t2.rowid and t2.rowid < t3.rowid  --we need combinations, not permutations: (a,b) considered same as  (b,a), hence <
+	   and summ<=$giftcard_balance
+	ORDER BY summ DESC
+	LIMIT 1;
+
+EOF
+
+if [ -z "$debug" ]; then
+	grep -B 2 '2 gifts' $tempfile || echo "2 gifts  Not possible"
+	grep      '3 gifts' $tempfile || echo "3 gifts  Not possible"
+fi
+
+echo
+ls -ltr ${tempfile}* ${db}*
+
+#grep --quiet summ $tempfile #if there are no rows returned, there won't be no header line with summ
+#[ $? -eq 0 ] && cat $tempfile || echo "Not possible"
+
 <<COMMENT
+	     --and t2.c1<=($giftcard_balance-t1.c1)  -- this does not work.
+		 --CREATE UNIQUE INDEX IF NOT EXISTS idxrowid ON t(rowid); --this does not work:  no such column: rowid
+		 --t1.rowid,t2.rowid,t3.rowid,
+	 	 --ORDER BY t1.rowid DESC,t2.rowid DESC	-- This gives incorrect answer! Fullscan Steps:1, Sort Operations:0
+			2 gifts          Detergent + Headphones  1000         1400          2400
+			2 gifts          Paperback Book + Headp  700          1400          2100
+			2 gifts          Paperback Book + Deter  700          1000          1700
+			2 gifts          Candy Bar + Earmuffs    500          2000          2500
+		--ORDER BY t1.rowid DESC,t2.rowid DESC,t3.rowid DESC
+	
 #virtual csv table in memory:
 selectid    order       from        detail
 ----------  ----------  ----------  -----------------------------------------
@@ -174,115 +326,4 @@ This means that retrieving or sorting records by rowid is fast.
 Searching for a record with a specific rowid, or for all records with rowids within a specified range is around twice as fast as a similar 
 search made by specifying any other PRIMARY KEY or indexed value
 COMMENT
-
-tempfile=$(mktemp) || exit 42
-trap "rm $tempfile" EXIT
-
-filename=$1
-giftcard_balance=$2
-
-[ -n "$filename" ] && echo filename=$filename || usage
-[ -n "$giftcard_balance" ] && echo giftcard_balance=$giftcard_balance || usage
-
-db="`dirname $0`/prices.sqlite"
-sqlite3="`dirname $0`/sqlite-amalgamation-3200000/sqlite3"
-$sqlite3 $db <<EOF
-
-DROP TABLE IF  EXISTS t;
-CREATE TABLE IF NOT EXISTS t (c0,c1 INTEGER);
-CREATE INDEX IF NOT EXISTS idx1 ON t(c1) ;
---CREATE UNIQUE INDEX IF NOT EXISTS idxrowid ON t(rowid); --this does not work:  no such column: rowid
-EOF
-
-cat $filename|removecomments|removeblanks|trimspace|$sqlite3 -separator ',' $db ".import /dev/stdin t"
-
-cat <<EOF | $sqlite3 $db -header -column
-.width 10 10 10 70
-.stats on
-.scanstats on
-	--EXPLAIN QUERY PLAN
-	SELECT t1.rowid,t2.rowid,
-		   '2 gifts' as 'Number of Gifts'
-		  ,t1.c0 || " + " || t2.c0 as combination
-		  ,t1.c1 as first_price
-		  ,t2.c1 as second_price
-		  ,t1.c1+t2.c1 as summ 
-		  ,$giftcard_balance-t1.c1 as '$giftcard_balance-first_price'
-	FROM t t1, t t2 
-	WHERE t1.rowid < t2.rowid   --we need combinations, not permutations: (a,b) considered same as  (b,a), hence <
-	     --and t2.c1<=($giftcard_balance-t1.c1)
-	     and  summ<=$giftcard_balance
-	     ORDER BY t1.rowid DESC,t2.rowid DESC	--Fullscan Steps:                      1, Sort Operations:                     0
-		 --ORDER BY summ DESC	--Fullscan Steps:                      5, Sort Operations:                     1
-	LIMIT 1		-- Fullscan Steps:                      1  (5 without it)
-         ;
-		 
-	SELECT --t1.rowid,t2.rowid,t3.rowid,
-		 '3 gifts' as 'Number of Gifts'
-		 ,t1.c0 || " + " || t2.c0 || " + " || t3.c0 as combination
-		 ,t1.c1 as first_price
-		 ,t2.c1 as second_price
-		 ,t3.c1 as third_price
-		 ,t1.c1+t2.c1+t3.c1 as summ 
-	FROM t t1, t t2, t t3
-	WHERE t1.rowid < t2.rowid and t2.rowid < t3.rowid  --we need combinations, not permutations: (a,b) considered same as  (b,a), hence <
-	   and summ<=$giftcard_balance
-	--ORDER BY summ DESC
-	ORDER BY t1.rowid DESC,t2.rowid DESC,t3.rowid DESC
-	LIMIT 1;
-		 
-EOF
-
-ls -ltr ${db}*
-#exit 0
-
-cat <<EOF | $sqlite3 -header -column #| tee >(grep --count summ)
-SELECT load_extension('`dirname $0`/sqlite-amalgamation-3200000/csv') as ''; --csv.so, compiled separately is loaded this way. Also can do: .load path/csv
-
-CREATE VIRTUAL TABLE temp.t USING csv(filename='$filename');
-.stats on
-.scanstats on
-.output $tempfile
---SELECT  ' ' as '2 gifts:';
---EXPLAIN QUERY PLAN
-SELECT --t1.rowid,t2.rowid,
-	   '2 gifts' as 'Number of Gifts'
-	  ,t1.c0 || " + " || t2.c0 as combination
-	  ,t1.c1 as first_price
-	  ,t2.c1 as second_price
-	  ,t1.c1+t2.c1 as summ 
-FROM t t1, t t2 
-WHERE t1.rowid < t2.rowid   --we need combinations, not permutations: (a,b) considered same as  (b,a), hence <
-   and summ<=$giftcard_balance
---ORDER BY summ DESC
-ORDER BY t1.rowid DESC,t2.rowid DESC
-LIMIT 1;
-
---SELECT  ' ' as '3 gifts:';
-
-SELECT --t1.rowid,t2.rowid,t3.rowid,
-	 '3 gifts' as 'Number of Gifts'
-	 ,t1.c0 || " + " || t2.c0 || " + " || t3.c0 as combination
-	 ,t1.c1 as first_price
-	 ,t2.c1 as second_price
-	 ,t3.c1 as third_price
-	 ,t1.c1+t2.c1+t3.c1 as summ 
-FROM t t1, t t2, t t3
-WHERE t1.rowid < t2.rowid and t2.rowid < t3.rowid  --we need combinations, not permutations: (a,b) considered same as  (b,a), hence <
-   and summ<=$giftcard_balance
---ORDER BY summ DESC
-ORDER BY t1.rowid DESC,t2.rowid DESC,t3.rowid DESC
-LIMIT 1;
-
-EOF
-
-cat $tempfile
-exit 0
-
-grep -B 2 '2 gifts' $tempfile || echo "2 gifts Not possible"
-grep -B 2 '3 gifts' $tempfile || echo "3 gifts Not possible"
-
-#grep --quiet summ $tempfile #if there are no rows returned, there won't be no header line with summ
-#[ $? -eq 0 ] && cat $tempfile || echo "Not possible"
-
 
