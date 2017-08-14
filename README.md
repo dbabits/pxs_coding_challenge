@@ -18,7 +18,7 @@ $ ./find_pair.py -f ./prices.txt  -t 2300 # -h for more details
 best_combo=(('Paperback Book', 700), ('Headphones', 1400))
 ```
 Pick 2/3 gifts:
-- *Unofficial*, experimental sql/bash implementation that tries two different approaches: I believe one achieves O(n log n) and the other is O(n^2) that trades time for space.
+- *Unofficial*, experimental sql/bash implementation that tries two different approaches: I believe one achieves O(n log n) and the other is O(n^2) that trades time for space.**Note** that Python implementation is better and is the one that should be considered.
 ```sh
 $ ./find_pair.sh -f ./prices.txt -t 2500 # -h for more details
 
