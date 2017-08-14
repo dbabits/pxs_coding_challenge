@@ -1,7 +1,7 @@
 Make sure to checkout the entire repository because it includes dependencies and because the scripts assume the directory structure like in the repo. 
 
 # Webservice that hashes a string.
-- Deployed at: .....
+- Deployed at: (communicated separately)
 - Instructions shown when the default url is hit
 
 Scalability and other improvements: 
