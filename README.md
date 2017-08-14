@@ -1,4 +1,4 @@
-Make sure to checkout the entire repository because it includes dependencies and because the scripts assume the directory structure like in the repo. 
+Make sure to checkout the entire repository because it includes dependencies and some scripts assume this directory structure.
 
 # Webservice that hashes a string.
 - Deployed at: (communicated separately)
