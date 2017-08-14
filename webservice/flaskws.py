@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from flask import Flask, request, abort, make_response,jsonify
+from flask import Flask, request, abort, make_response,jsonify,__version__
 import hashlib
 
 app = Flask(__name__)
@@ -40,7 +40,7 @@ def show_endpoints():
 
 @app.route('/version/', methods=["GET"])
 def get_version():
-    return jsonify({"flask_version":flask.__version__})
+    return jsonify({"flask_version":__version__})
 
 @app.route('/messages/', methods=['GET'])
 def get_messages():
