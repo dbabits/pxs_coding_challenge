@@ -26,7 +26,7 @@ def  walk_l(mm,fromm):
     mm.seek(fromm, os.SEEK_SET)           #set the file pointer at the beginning of the line
     line=mm.readline().strip()            #read the line (this moves the pointer forward)
     to=mm.tell()                          #next time, start from the current position
-    desc, price = line.split(',') #parse the line
+    desc, price = line.split(',')         #parse the line
     price=int(price)                      #convert to int
     logging.debug("walk_l():from=%d,to=%d,line=[%s],desc=[%s],price=[%d]" % (fromm, to, line,desc,price))
     return to,desc,price                  #Since we're moving L->R here, the next From will be the current To
@@ -46,7 +46,7 @@ def walk_file(filename,target):
         mm = mmap.mmap(f.fileno(), 0)     # memory-map the file, size 0 means whole file
         logging.debug("filename={filename},size={size} bytes".format(filename=filename,size=mm.size()))
 
-        best_diff=diff=sys.maxsize
+        best_diff=sys.maxsize
         best_combo=()
         start = 0
         end=mm.size()
